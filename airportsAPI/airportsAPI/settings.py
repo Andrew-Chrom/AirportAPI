@@ -37,6 +37,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'locations',
+    'aviation',
+    'flights',
+    'drf_spectacular',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
@@ -74,8 +79,12 @@ WSGI_APPLICATION = 'airportsAPI.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'airport_service', # I am not sure If I've created it properly, I just have written in psql shell CREATE DATABASE airport_service;
+        'USER': 'postgres',
+        'PASSWORD': 'pass',
+        'HOST': 'localhost',
+        'PORT': '5432'
     }
 }
 
@@ -120,3 +129,12 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+AUTH_USER_MODEL = 'users.CustomUser'
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'AirportAPI',
+    'DESCRIPTION': 'API description',
+    'VERSION': '1.0.0',
+}
