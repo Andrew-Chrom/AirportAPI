@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'locations',
     'aviation',
     'flights',
+    'users',
     'drf_spectacular',
     'rest_framework'
 ]
@@ -133,8 +134,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'AirportAPI',
-    'DESCRIPTION': 'API description',
+    'DESCRIPTION': 'Airport\'s API DESC',
     'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }

@@ -1,11 +1,11 @@
 from django.db import models
 from django.db.models.functions import Now
 
-from locations.models import Airports
-from aviation.models import Airplanes
+from locations.models import Airport
+from aviation.models import Airplane
 from users.models import CustomUser
 
-class Flights(models.Model):
+class Flight(models.Model):
     class FlightStatus(models.TextChoices):
         SCHEDULED = "scheduled", "SCHEDULED"
         BOARDING  = "boarding", "BOARDING"
@@ -16,8 +16,8 @@ class Flights(models.Model):
     departure_time = models.DateTimeField(db_default=Now())
     arrival_time   = models.DateTimeField(db_default=Now())
 
-    departure_airport = models.ForeignKey(Airports, on_delete=models.DO_NOTHING) 
-    arrival_airport   = models.ForeignKey(Airports, on_delete=models.DO_NOTHING)
+    departure_airport = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="departure_airport") 
+    arrival_airport   = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="arrival_airport")
     
     passenger_num = models.PositiveIntegerField() # num of sitting place
     flight_status = models.CharField(
@@ -26,10 +26,12 @@ class Flights(models.Model):
         default=FlightStatus.SCHEDULED
     )
     
-    plane = models.ForeignKey(Airplanes, on_delete=models.DO_NOTHING)
+    plane = models.ForeignKey(Airplane, on_delete=models.DO_NOTHING)
     
+    def __str__(self):
+        return str(self.departure_time) # need to change
 
-class Tickets(models.Model):
+class Ticket(models.Model):
     class TicketStatus(models.TextChoices):
         BOOKED    = "booked", "BOOKED"
         CANCELLED = "cancelled", "CANCELLED"
@@ -42,6 +44,8 @@ class Tickets(models.Model):
         FIRST    = "first", "FIRST"
     
     price = models.FloatField()
+    
+    # guess, that i need to change it on row and type(A, B, C ..)
     place = models.PositiveIntegerField()
     
     ticket_status = models.CharField(
@@ -56,5 +60,8 @@ class Tickets(models.Model):
         default=TicketType.FIRST
     )
     
-    flight = models.ForeignKey(Flights, on_delete=models.DO_NOTHING)
+    flight = models.ForeignKey(Flight, on_delete=models.DO_NOTHING)
     user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
+    
+    def __str__(self):
+        return f"{self.flight.departure_airport.name} - {self.flight.departure_airport.name}" 
