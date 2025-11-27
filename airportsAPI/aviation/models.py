@@ -14,14 +14,11 @@ class Airplane(models.Model):
     airplane_name = models.CharField(max_length=255)
     manufacturer  = models.CharField(max_length=255)
     
-    seat_num = models.PositiveIntegerField()
-    # Maybe just field with year will be enough, cuz there is no need to store exact date.
-    commisioning_date = models.DateTimeField(db_default=Now()) # start date
-    retirement_date = models.DateTimeField() 
-    
+    max_row    = models.PositiveIntegerField(null=True)
+    max_column = models.CharField(max_length=1, null=True) # A, B, C ..
+     
+    commisioning_year = models.PositiveIntegerField(null=True)
     airline = models.ForeignKey(Airline, on_delete=models.DO_NOTHING)
     
     def __str__(self):
         return self.airplane_name # not enough info?
-    
-    

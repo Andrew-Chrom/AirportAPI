@@ -19,7 +19,6 @@ class Flight(models.Model):
     departure_airport = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="departure_airport") 
     arrival_airport   = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="arrival_airport")
     
-    passenger_num = models.PositiveIntegerField() # num of sitting place
     flight_status = models.CharField(
         max_length=10,
         choices=FlightStatus.choices,
@@ -29,14 +28,14 @@ class Flight(models.Model):
     plane = models.ForeignKey(Airplane, on_delete=models.DO_NOTHING)
     
     def __str__(self):
-        return str(self.departure_time) # need to change
+        return f"{self.departure_airport.id} - {self.arrival_airport.id} | {self.departure_time} - {self.arrival_time}" # | {self.departure_airport.name} - {self.arrival_airport.name}" # need to change
 
 class Ticket(models.Model):
     class TicketStatus(models.TextChoices):
         BOOKED    = "booked", "BOOKED"
         CANCELLED = "cancelled", "CANCELLED"
         USED      = "used", "USED"
-    
+        AVAILABLE = "available", "AVAILABLE"
     class TicketType(models.TextChoices):
         ECONOMY  = "economy", "ECONOMY"
         PREMIUM  = "premium", "PREMIUM"
@@ -45,8 +44,8 @@ class Ticket(models.Model):
     
     price = models.FloatField()
     
-    # guess, that i need to change it on row and type(A, B, C ..)
-    place = models.PositiveIntegerField()
+    row = models.IntegerField(null=True)
+    column = models.CharField(max_length=1, null=True) # A, B, C
     
     ticket_status = models.CharField(
         max_length=10,
