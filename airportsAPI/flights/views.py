@@ -3,14 +3,17 @@ from rest_framework.response import Response
 from rest_framework import status
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .serializers import FlightSerializer, TicketSerializer
-from .models import Flight, Ticket
+from .serializers import FlightSerializer, TicketSerializer, OrderSerializer
+from .models import Flight, Ticket, Order
 
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
 
 class FlightViewSet(viewsets.ModelViewSet):
     queryset = Flight.objects.all()
     serializer_class = FlightSerializer
-    
+ 
     
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()

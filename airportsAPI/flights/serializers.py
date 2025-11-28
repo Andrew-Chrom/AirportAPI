@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import Flight, Ticket
+from .models import Flight, Ticket, Order
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = '__all__'
 
 class FlightSerializer(serializers.ModelSerializer):
     class Meta:

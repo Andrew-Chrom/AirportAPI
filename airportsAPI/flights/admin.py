@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Flight, Ticket
+from .models import Flight, Ticket, Order
 
 class FlightAdmin(admin.ModelAdmin):
     list_display = ['plane', 'departure_airport', 'arrival_airport','departure_time', 'arrival_time', 'flight_status']
@@ -12,5 +12,12 @@ class TicketAdmin(admin.ModelAdmin):
     search_fields = ['flight__departure_airport__name', 'flight__arrival_airport__name']
     list_editable = ['ticket_status', 'ticket_type']
     
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ['amount', 'status', 'created_at', 'updated_at', 'payment_method', 'user']
+    list_filter = ['status']
+    search_fields = ['user']
+    list_editable = ['status']
+    
 admin.site.register(Flight, FlightAdmin)
 admin.site.register(Ticket, TicketAdmin)
+admin.site.register(Order, OrderAdmin)

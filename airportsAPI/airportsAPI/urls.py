@@ -21,11 +21,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('locations.urls')),
-    path('api/', include('aviation.urls')),
+    path('api/', include('airports.urls')),
+    path('api/users/', include('users.urls')),
     path('api/', include('flights.urls')),
-    path('api/', include('users.urls')),
-    
     
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
