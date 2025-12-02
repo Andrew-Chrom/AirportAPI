@@ -7,7 +7,7 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = ['id', 'price', 'row', 'column', 'ticket_status', 'ticket_type', 'flight', 'user']
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderSerializer(serializers.Serializer):
     class Meta:
         model = Order
         fields = '__all__'

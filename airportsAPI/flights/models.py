@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models.functions import Now
 from airports.models import Airport, Airplane
 from users.models import CustomUser
+from .enum import SeatColumns
 
 class Order(models.Model):
     class OrderStatus(models.TextChoices):
@@ -67,14 +68,14 @@ class Flight(models.Model):
     
         if is_new:
             tickets = []
-            columns = ['A', 'B', 'C', 'D', 'E', 'F']
-            # investige if there are some logic when creating first, business, premium, economy class, then i need to add this 
+            
             for row in range(1, self.plane.max_row + 1):
-                for column in columns:
-                    if column == self.plane.max_column:
-                        tickets.append(Ticket(flight=self, row=row, column=column))
+                for column in SeatColumns:
+                    print(column)
+                    if column.value == self.plane.max_column:
+                        tickets.append(Ticket(flight=self, row=row, column=column.value))
                         break
-                    tickets.append(Ticket(flight=self, row=row, column=column))
+                    tickets.append(Ticket(flight=self, row=row, column=column.value))
             Ticket.objects.bulk_create(tickets)
     
     def __str__(self):
