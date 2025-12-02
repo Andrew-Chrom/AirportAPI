@@ -7,16 +7,18 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = ['id', 'price', 'row', 'column', 'ticket_status', 'ticket_type', 'flight', 'user']
 
-class OrderSerializer(serializers.Serializer):
-   
-    amount = serializers.FloatField()
-    created_at = serializers.DateTimeField()
-    updated_at = serializers.DateTimeField()
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = '__all__'
+    # amount = serializers.FloatField()
+    # created_at = serializers.DateTimeField()
+    # updated_at = serializers.DateTimeField()
     
-    status = serializers.ChoiceField(choices=("pending", "completed", "cancelled", "refunded"))
-    payment_method = serializers.ChoiceField(choices=("credit_card", "cash"))
-    user = UserSerializer() 
-    tickets = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    # status = serializers.ChoiceField(choices=("pending", "completed", "cancelled", "refunded"))
+    # payment_method = serializers.ChoiceField(choices=("credit_card", "cash"))
+    # user = UserSerializer() 
+    # tickets = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
         
     
     
