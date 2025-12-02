@@ -1,17 +1,9 @@
 from rest_framework.routers import SimpleRouter
-from .views import TicketViewSet, OrderListCreate, OrderRetrieveUpdateDestroy, FlightApiView, FlightUpdateApiView
-from django.urls import path
-
+from .views import FlightViewSet, TicketViewSet, OrderViewSet
 
 router = SimpleRouter()
-router.register(r'tickets', TicketViewSet, basename='ticket')   
+router.register(r'flights', FlightViewSet, basename='flight')
+router.register(r'tickets', TicketViewSet, basename='ticket')
+router.register(r'orders', OrderViewSet, basename="order")
 
-
-urlpatterns = [
-    path('orders/', OrderListCreate.as_view()),
-    path('orders/<int:id>', OrderRetrieveUpdateDestroy.as_view()),
-    path('flights/', FlightApiView.as_view()),
-    path('flights/<int:id>', FlightUpdateApiView.as_view())
-]
-
-urlpatterns += router.urls
+urlpatterns = router.urls

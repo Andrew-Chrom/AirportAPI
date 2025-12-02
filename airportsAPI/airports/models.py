@@ -20,7 +20,11 @@ class Airplane(models.Model):
     airline = models.ForeignKey(Airline, on_delete=models.DO_NOTHING)
     
     def __str__(self):
-        return self.name
+        return self.name # not enough info?
+
+
+
+
 
 class Country(models.Model):
     class RegionType(models.TextChoices):
@@ -44,7 +48,7 @@ class Airport(models.Model):
     latitude = models.FloatField()
     longitude = models.FloatField()
     
-    runaway_num = models.PositiveIntegerField()
+    runaway_num = models.PositiveIntegerField() # к-сть злітних смуг
     plane_num = models.PositiveIntegerField() # num of planes in airport
     
     country = models.ForeignKey(Country, on_delete=models.DO_NOTHING)
