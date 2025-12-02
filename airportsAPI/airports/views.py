@@ -18,6 +18,7 @@ class AirlineViewSet(viewsets.ModelViewSet):
     serializer_class = AirlineSerializer
     queryset = Airline.objects.all()
 
+
 class CountryViewSet(viewsets.ModelViewSet):
     serializer_class = CountrySerializer
     queryset = Country.objects.all()
