@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models.functions import Now
 from airports.models import Airport, Airplane
 from users.models import CustomUser
+from .enum import SeatColumns
 
 class Order(models.Model):
     class OrderStatus(models.TextChoices):
@@ -16,8 +17,8 @@ class Order(models.Model):
     
     amount = models.FloatField(null=True)
     
-    created_at = models.DateTimeField(db_default=Now())
-    updated_at = models.DateTimeField(db_default=Now())
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
     
     
     payment_method = models.CharField(
@@ -35,8 +36,8 @@ class Order(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
 
     def __str__(self):
-        return f"{self.id}"
-
+        return f"Order {self.id}, {self.user.username}"
+    
 class Flight(models.Model):
     class FlightStatus(models.TextChoices):
         SCHEDULED = "scheduled", "SCHEDULED"
@@ -67,14 +68,14 @@ class Flight(models.Model):
     
         if is_new:
             tickets = []
-            columns = ['A', 'B', 'C', 'D', 'E', 'F']
-            # investige if there are some logic when creating first, business, premium, economy class, then i need to add this 
+            
             for row in range(1, self.plane.max_row + 1):
-                for column in columns:
-                    if column == self.plane.max_column:
-                        tickets.append(Ticket(flight=self, row=row, column=column))
+                for column in SeatColumns:
+                    print(column)
+                    if column.value == self.plane.max_column:
+                        tickets.append(Ticket(flight=self, row=row, column=column.value))
                         break
-                    tickets.append(Ticket(flight=self, row=row, column=column))
+                    tickets.append(Ticket(flight=self, row=row, column=column.value))
             Ticket.objects.bulk_create(tickets)
     
     def __str__(self):
@@ -109,9 +110,9 @@ class Ticket(models.Model):
         default=TicketType.FIRST
     )
     
-    order = models.ForeignKey(Order, related_name="tickets", null=True, on_delete=models.DO_NOTHING)
+    order = models.ForeignKey(Order, related_name="tickets", blank=True, null=True, on_delete=models.SET_NULL)
     flight = models.ForeignKey(Flight, on_delete=models.DO_NOTHING)
-    user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True)
     
     def __str__(self):
         return f"{self.flight.departure_airport.name} - {self.flight.departure_airport.name}" 
