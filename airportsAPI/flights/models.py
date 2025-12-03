@@ -17,8 +17,8 @@ class Order(models.Model):
     
     amount = models.FloatField(null=True)
     
-    created_at = models.DateTimeField(db_default=Now())
-    updated_at = models.DateTimeField(db_default=Now())
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
     
     
     payment_method = models.CharField(
@@ -36,8 +36,8 @@ class Order(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
 
     def __str__(self):
-        return f"{self.id}"
-
+        return f"Order {self.id}, {self.user.username}"
+    
 class Flight(models.Model):
     class FlightStatus(models.TextChoices):
         SCHEDULED = "scheduled", "SCHEDULED"
@@ -110,9 +110,9 @@ class Ticket(models.Model):
         default=TicketType.FIRST
     )
     
-    order = models.ForeignKey(Order, related_name="tickets", null=True, on_delete=models.DO_NOTHING)
+    order = models.ForeignKey(Order, related_name="tickets", blank=True, null=True, on_delete=models.SET_NULL)
     flight = models.ForeignKey(Flight, on_delete=models.DO_NOTHING)
-    user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True)
     
     def __str__(self):
         return f"{self.flight.departure_airport.name} - {self.flight.departure_airport.name}" 

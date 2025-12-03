@@ -5,20 +5,26 @@ from users.serializers import UserSerializer
 class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields = ['id', 'price', 'row', 'column', 'ticket_status', 'ticket_type', 'flight', 'user']
+        fields = ['id', 'price', 'row', 'column', 'ticket_status', 'ticket_type', 'flight', 'user', 'order']
 
-class OrderSerializer(serializers.Serializer):
+class DetailedOrderSerializer(serializers.ModelSerializer):
+    tickets = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     class Meta:
         model = Order
-        fields = '__all__'
-    # amount = serializers.FloatField()
-    # created_at = serializers.DateTimeField()
-    # updated_at = serializers.DateTimeField()
+        fields = ['amount', 'created_at', 'updated_at', 'payment_method', 'status', 'user', 'tickets']
+
+class OrderSerializer(serializers.ModelSerializer):
+    tickets = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    class Meta:
+        model = Order
+        fields = ['id', 'amount', 'created_at', 'status', 'user', 'tickets'] 
     
-    # status = serializers.ChoiceField(choices=("pending", "completed", "cancelled", "refunded"))
-    # payment_method = serializers.ChoiceField(choices=("credit_card", "cash"))
-    # user = UserSerializer() 
-    # tickets = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    
+class CreateOrderSerializer(serializers.ModelSerializer):
+    tickets = TicketSerializer(many=True)
+    class Meta:
+        model = Order
+        fields = ['id', 'status', 'user', 'tickets'] 
         
     
     
