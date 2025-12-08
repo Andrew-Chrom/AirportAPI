@@ -2,30 +2,59 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView, ListAPIView
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.permissions import IsAdminUser
 
-from .serializers import FlightSerializer, TicketSerializer, OrderSerializer
+from .serializers import FlightSerializer, TicketSerializer, OrderSerializer, DetailedOrderSerializer
 from .models import Flight, Ticket, Order
-
-
-
-
+from users.models import CustomUser
 
 class OrderListCreate(ListCreateAPIView):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
+    
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Order.objects.all()
+        return Order.objects.filter(user=self.request.user)
 
-class OrderRetrieveUpdateDestroy(RetrieveUpdateDestroyAPIView):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
+    def get_serializer_class(self):
+        if self.request.user.is_staff:
+            return DetailedOrderSerializer
+        return OrderSerializer
+
+    def create(self, validated_data): 
+
+        tickets_data = validated_data.data.pop('tickets')
+        user_id = validated_data.data.pop('user')
+        
+        order = Order.objects.create(**validated_data.data, user=CustomUser.objects.get(id=user_id))
+       
+        amount = 0
+        for ticket in tickets_data:
+            t = Ticket.objects.get(id=ticket)
+            print(t.ticket_status, "$"*50)
+            if t.ticket_status != "available":
+                return Response("All tickets is not available", status=status.HTTP_404_NOT_FOUND)
+            t.order = order
+            t.ticket_status = "booked"
+            t.save()
+            amount += t.price
+        order.amount = amount
+        order.save()
+        
+        serializer = OrderSerializer(data=order).data
+        if serializer.is_valid():
+            return Response(serializer.data)        
+        else:
+            return Response(serializer.errors)
+class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
+    serializer_class = DetailedOrderSerializer
     lookup_url_kwarg = 'id'
     
-    
-        
-# class FlightViewSet(viewsets.ModelViewSet):
-#     queryset = Flight.objects.all()
-#     serializer_class = FlightSerializer
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Order.objects.all()
+        return Order.objects.filter(user=self.request.user)
 
 class FlightApiView(APIView):
     def get(self, request):
@@ -70,35 +99,13 @@ class FlightUpdateApiView(APIView):
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
-    
+    permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend] 
     filterset_fields = ['flight']
-    
-    
-    # def create(self, request):
-    #     serializer = TicketSerializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True) 
-
-    #     row = serializer.validated_data['row']
-    #     column = serializer.validated_data['column']
-
-    #     try:
-    #         ticket = Ticket.objects.get(row=row, column=column)
-    #     except:
-    #         ticket = None
-            
-    #     if ticket:    
-    #         if ticket.ticket_status in ["used", "booked"]:
-    #             return Response(f"The seat is {ticket.ticket_status}", status=status.HTTP_400_BAD_REQUEST)
-        
-    #     flight = serializer.validated_data['flight'] 
-    #     plane = flight.plane
-    #     max_row = plane.max_row
-    #     max_column = plane.max_column
-        
-    #     if row <= max_row and column <= max_column:
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-    #     return Response("No available seats", status=status.HTTP_400_BAD_REQUEST) # not sure what method to use
-                   
+   
+   
+class AvailableTicketsView(ListAPIView):
+    serializer_class = TicketSerializer 
+    def get_queryset(self):
+        flight_id = self.kwargs['id']
+        return Ticket.objects.filter(flight__id=flight_id, ticket_status='available')
