@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
-from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView, ListAPIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAdminUser
 
@@ -10,32 +10,19 @@ from .serializers import FlightSerializer, TicketSerializer, OrderSerializer, De
 from .models import Flight, Ticket, Order
 from users.models import CustomUser
 
-
-# i see some flights with rows/columns available.
-# i create order to buy 1 or more available tickets(i guees there is no need to check if ticket available, cuz system will show already what can i choose and what I can't)
-# so in order the amount is creating, created_at and pending status(waiting to buy a ticket(but what about cash? Should I remove it?))
-# Well, I waited the payment, and updated_at is updated..
-# so that's creation of order. (ticket_status -> booked)
-
-# should I manage ability to edit it?(after payment no), but i need be able to refund it and payback
-# so here i need to set ticket_status from avail to cancelled 
-
-# okay, let's talk about overall logic. Countries, airports, airline is created and stay still for a long.
-# flights, orders, tickets is changing very often, user also.
-# so airline creates flights, where flights creates tickets. Users using orders to buy a ticket
-
-# should i make groups: airline stuff, default users, just superusers/staff?
-
 class OrderListCreate(ListCreateAPIView):
-    serializer_class = OrderSerializer
     
     def get_queryset(self):
         if self.request.user.is_staff:
             return Order.objects.all()
         return Order.objects.filter(user=self.request.user)
 
-    def create(self, validated_data):
-        # serializer = OrderSerializer(data=self.request.data, read_only=True)  
+    def get_serializer_class(self):
+        if self.request.user.is_staff:
+            return DetailedOrderSerializer
+        return OrderSerializer
+
+    def create(self, validated_data): 
 
         tickets_data = validated_data.data.pop('tickets')
         user_id = validated_data.data.pop('user')
@@ -61,7 +48,6 @@ class OrderListCreate(ListCreateAPIView):
         else:
             return Response(serializer.errors)
 class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
-    # queryset = Order.objects.all()
     serializer_class = DetailedOrderSerializer
     lookup_url_kwarg = 'id'
     
@@ -69,12 +55,6 @@ class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
         if self.request.user.is_staff:
             return Order.objects.all()
         return Order.objects.filter(user=self.request.user)
-
-    
-        
-# class FlightViewSet(viewsets.ModelViewSet):
-#     queryset = Flight.objects.all()
-#     serializer_class = FlightSerializer
 
 class FlightApiView(APIView):
     def get(self, request):
@@ -122,35 +102,10 @@ class TicketViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend] 
     filterset_fields = ['flight']
-    
-    
-
-        
-    #     return Ticket.objects.filter(user=self.request.user)
-    # def create(self, request):
-    #     serializer = TicketSerializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True) 
-
-    #     row = serializer.validated_data['row']
-    #     column = serializer.validated_data['column']
-
-    #     try:
-    #         ticket = Ticket.objects.get(row=row, column=column)
-    #     except:
-    #         ticket = None
-            
-    #     if ticket:    
-    #         if ticket.ticket_status in ["used", "booked"]:
-    #             return Response(f"The seat is {ticket.ticket_status}", status=status.HTTP_400_BAD_REQUEST)
-        
-    #     flight = serializer.validated_data['flight'] 
-    #     plane = flight.plane
-    #     max_row = plane.max_row
-    #     max_column = plane.max_column
-        
-    #     if row <= max_row and column <= max_column:
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-    #     return Response("No available seats", status=status.HTTP_400_BAD_REQUEST) # not sure what method to use
-                   
+   
+   
+class AvailableTicketsView(ListAPIView):
+    serializer_class = TicketSerializer 
+    def get_queryset(self):
+        flight_id = self.kwargs['id']
+        return Ticket.objects.filter(flight__id=flight_id, ticket_status='available')
