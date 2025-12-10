@@ -6,9 +6,91 @@ from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView, L
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAdminUser
 
-from .serializers import FlightSerializer, TicketSerializer, OrderSerializer, DetailedOrderSerializer
-from .models import Flight, Ticket, Order
+from .serializers import FlightSerializer, TicketSerializer, OrderSerializer, CreateOrderSerializer, PaymentSerializer
+from .models import Flight, Ticket, Order, Payment
 from users.models import CustomUser
+
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from django.conf import settings
+from rest_framework.permissions import AllowAny
+from datetime import datetime
+
+import stripe
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+HOST = 'https://saleable-calceolate-carolyne.ngrok-free.dev'
+SUCCESS_URL = f'{HOST}/success'
+CANCEL_URL = f'{HOST}/cancelled'
+
+@api_view(['GET'])
+def Success(request):
+    return Response({'succesfully paid'})
+
+@api_view(['GET'])
+def Cancelled(request):
+    return Response({'Cancelled'})
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def stripe_webhook(request):
+    
+    # payload = request.body
+    
+    # sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    
+    # endpoint_secret = settings.WEBHOOK_SECRET
+    
+    try:
+        # event = stripe.Webhook.construct_event(
+        #     payload=payload,
+        #     sig_header=sig_header,
+        #     secret=endpoint_secret
+        # )
+        event = request.data
+    except ValueError:
+        return Response({'detail': 'Invalid payload'}, status=400)
+    except stripe.error.SignatureVerificationError:
+        return Response({'detail': 'Invalid signature'}, status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        order_id = session.get('metadata', {}).get('order_id')
+        
+        if order_id:
+            payment = Payment.objects.create(amount=session['amount_total'] / 100,
+                                         status='completed',
+                                         order_id=order_id)
+            payment.save()
+            
+            Order.objects.filter(id=order_id).update(
+                status='completed',
+                updated_at=datetime.now()
+            )
+            tickets = Ticket.objects.filter(order=order_id).update(ticket_status='booked')
+            tickets.save()
+
+    elif event['type'] == 'checkout.session.expired':
+        session = event['data']['object']
+        order_id = session.get('metadata', {}).get('order_id')
+        
+        if order_id:
+            try:
+                order = Order.objects.get(id=order_id)
+
+                if order.status == 'pending':
+                    order.status = 'cancelled'
+
+                    order.save()
+                    Ticket.objects.filter(order=order).update(
+                        ticket_status='available', 
+                        order=None 
+                    )
+            except Order.DoesNotExist:
+                pass
+    
+    return Response({'status': 'success'}, status=200)
 
 class OrderListCreate(ListCreateAPIView):
     
@@ -18,37 +100,60 @@ class OrderListCreate(ListCreateAPIView):
         return Order.objects.filter(user=self.request.user)
 
     def get_serializer_class(self):
-        if self.request.user.is_staff:
-            return DetailedOrderSerializer
+        if self.request.method == "POST":
+            return CreateOrderSerializer
         return OrderSerializer
 
-    def create(self, validated_data): 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        tickets_data = validated_data.data.pop('tickets')
-        user_id = validated_data.data.pop('user')
-        
-        order = Order.objects.create(**validated_data.data, user=CustomUser.objects.get(id=user_id))
-       
-        amount = 0
-        for ticket in tickets_data:
-            t = Ticket.objects.get(id=ticket)
-            print(t.ticket_status, "$"*50)
+        user = CustomUser.objects.get(id=data["user"])
+        ticket_ids = data["tickets"]
+
+        tickets = Ticket.objects.filter(id__in=ticket_ids)
+        if tickets.count() != len(ticket_ids):
+            return Response({"error": "Some tickets do not exist"}, status=400)
+
+        for t in tickets:
             if t.ticket_status != "available":
-                return Response("All tickets is not available", status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": f"Ticket {t.id} is not available"}, status=400)
+
+        total_amount = sum(t.price for t in tickets)
+
+        order = Order.objects.create(
+            user=user,
+            amount=total_amount,
+            status="pending"
+        )
+
+        for t in tickets:
             t.order = order
-            t.ticket_status = "booked"
+            t.ticket_status = 'reserved'
             t.save()
-            amount += t.price
-        order.amount = amount
-        order.save()
+
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {'name': f'Order #{order.id}'},
+                    'unit_amount': int(order.amount * 100),
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=SUCCESS_URL,
+            cancel_url=CANCEL_URL,
+            metadata={'order_id': order.id}
+        )
+
+        return Response({"checkout_url": session.url}, status=201)
         
-        serializer = OrderSerializer(data=order).data
-        if serializer.is_valid():
-            return Response(serializer.data)        
-        else:
-            return Response(serializer.errors)
+
 class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
-    serializer_class = DetailedOrderSerializer
+    serializer_class = OrderSerializer
     lookup_url_kwarg = 'id'
     
     def get_queryset(self):
@@ -101,7 +206,7 @@ class TicketViewSet(viewsets.ModelViewSet):
     serializer_class = TicketSerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend] 
-    filterset_fields = ['flight']
+    filterset_fields = ['flight', 'ticket_status', 'ticket_type']
    
    
 class AvailableTicketsView(ListAPIView):
@@ -109,3 +214,10 @@ class AvailableTicketsView(ListAPIView):
     def get_queryset(self):
         flight_id = self.kwargs['id']
         return Ticket.objects.filter(flight__id=flight_id, ticket_status='available')
+    
+class PaymentViewSet(viewsets.ModelViewSet):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend] 
+    filterset_fields = ['order', 'status']
