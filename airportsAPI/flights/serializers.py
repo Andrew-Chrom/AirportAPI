@@ -6,17 +6,6 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = ['id', 'price', 'row', 'column', 'ticket_status', 'ticket_type', 'flight', 'user', 'order']
 
-# To delete?
-# class DetailedOrderSerializer(serializers.ModelSerializer):
-#     tickets = serializers.ListField(
-#         child=serializers.IntegerField(),
-#         write_only=True
-#     )
-
-#     class Meta:
-#         model = Order
-#         fields = ['id', 'user', 'amount', 'status', 'payment_method', 'created_at', 'updated_at', 'tickets']
-
 class OrderSerializer(serializers.ModelSerializer):
     tickets = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 

@@ -13,7 +13,7 @@ urlpatterns = [
     path('flights/', FlightApiView.as_view()),
     path('flights/<int:id>', FlightUpdateApiView.as_view()),
     path('flights/<int:id>/tickets/available/', AvailableTicketsView.as_view()),
-    path('webhook/stripe', stripe_webhook),
+    path('webhook/stripe/', stripe_webhook),
 ]
 
 urlpatterns += router.urls

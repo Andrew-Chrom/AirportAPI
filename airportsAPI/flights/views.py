@@ -5,17 +5,17 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView, ListAPIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAdminUser
-
+from django.utils.timezone import now
 from .serializers import FlightSerializer, TicketSerializer, OrderSerializer, CreateOrderSerializer, PaymentSerializer
 from .models import Flight, Ticket, Order, Payment
 from users.models import CustomUser
-
+from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
 from rest_framework.permissions import AllowAny
 from datetime import datetime
-
+import time
 import stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -36,19 +36,16 @@ def Cancelled(request):
 @permission_classes([AllowAny])
 def stripe_webhook(request):
     
-    # payload = request.body
-    
-    # sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    
-    # endpoint_secret = settings.WEBHOOK_SECRET
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    endpoint_secret = settings.STRIPE_WEBHOOK_SECRET # there are some troubles with dotenv file
     
     try:
-        # event = stripe.Webhook.construct_event(
-        #     payload=payload,
-        #     sig_header=sig_header,
-        #     secret=endpoint_secret
-        # )
-        event = request.data
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=sig_header,
+            secret=endpoint_secret
+        )
     except ValueError:
         return Response({'detail': 'Invalid payload'}, status=400)
     except stripe.error.SignatureVerificationError:
@@ -66,10 +63,9 @@ def stripe_webhook(request):
             
             Order.objects.filter(id=order_id).update(
                 status='completed',
-                updated_at=datetime.now()
+                updated_at=now()
             )
-            tickets = Ticket.objects.filter(order=order_id).update(ticket_status='booked')
-            tickets.save()
+            Ticket.objects.filter(order=order_id).update(ticket_status='booked')
 
     elif event['type'] == 'checkout.session.expired':
         session = event['data']['object']
@@ -111,47 +107,49 @@ class OrderListCreate(ListCreateAPIView):
 
         user = CustomUser.objects.get(id=data["user"])
         ticket_ids = data["tickets"]
-
-        tickets = Ticket.objects.filter(id__in=ticket_ids)
-        if tickets.count() != len(ticket_ids):
-            return Response({"error": "Some tickets do not exist"}, status=400)
-
-        for t in tickets:
-            if t.ticket_status != "available":
-                return Response({"error": f"Ticket {t.id} is not available"}, status=400)
-
-        total_amount = sum(t.price for t in tickets)
-
-        order = Order.objects.create(
-            user=user,
-            amount=total_amount,
-            status="pending"
-        )
-
-        for t in tickets:
-            t.order = order
-            t.ticket_status = 'reserved'
-            t.save()
-
-        session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {'name': f'Order #{order.id}'},
-                    'unit_amount': int(order.amount * 100),
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=SUCCESS_URL,
-            cancel_url=CANCEL_URL,
-            metadata={'order_id': order.id}
-        )
-
-        return Response({"checkout_url": session.url}, status=201)
         
+        with transaction.atomic():
+            tickets = Ticket.objects.filter(id__in=ticket_ids)
+            if tickets.count() != len(ticket_ids):
+                return Response({"error": "Some tickets do not exist"}, status=400)
 
+            for t in tickets:
+                if t.ticket_status != "available":
+                    return Response({"error": f"Ticket {t.id} is not available"}, status=400)
+
+            total_amount = sum(t.price for t in tickets)
+
+            order = Order.objects.create(
+                user=user,
+                amount=total_amount,
+                status="pending"
+            )
+
+            for t in tickets:
+                t.order = order
+                t.ticket_status = 'reserved'
+                t.save()
+
+            expiration_time = int(time.time()) + (30 * 60)
+            session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {'name': f'Order #{order.id}'},
+                        'unit_amount': int(order.amount * 100),
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                success_url=SUCCESS_URL,
+                cancel_url=CANCEL_URL,
+                metadata={'order_id': order.id},
+                expires_at=expiration_time
+            )
+
+            return Response({"checkout_url": session.url}, status=201) 
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
     serializer_class = OrderSerializer
     lookup_url_kwarg = 'id'
