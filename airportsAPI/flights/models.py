@@ -71,7 +71,6 @@ class Flight(models.Model):
             
             for row in range(1, self.plane.max_row + 1):
                 for column in SeatColumns:
-                    print(column)
                     if column.value == self.plane.max_column:
                         tickets.append(Ticket(price=42.42,flight=self, row=row, column=column.value))
                         break

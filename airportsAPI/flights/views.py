@@ -14,8 +14,10 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
 from rest_framework.permissions import AllowAny
-from datetime import datetime
+from .pagination import UserFlightPagination, AdminFlightPagination
+from rest_framework.pagination import PageNumberPagination, CursorPagination
 import time
+
 import stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -159,23 +161,21 @@ class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
             return Order.objects.all()
         return Order.objects.filter(user=self.request.user)
 
-class FlightApiView(APIView):
-    def get(self, request):
-        flights = Flight.objects.all()
-        serializer = FlightSerializer(flights, many=True)
-        
-        return Response(serializer.data)
+class FlightUserApiView(ListCreateAPIView):
+    pagination_class = UserFlightPagination
+    serializer_class = FlightSerializer
+    queryset = Flight.objects.all()
+
+class FlightAdminApiView(ListCreateAPIView):
+    permission_classes = [IsAdminUser]
+    pagination_class = AdminFlightPagination
+    serializer_class = FlightSerializer
+    queryset = Flight.objects.all()
     
-    def post(self, request):
-        serializer = FlightSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
  
 class FlightUpdateApiView(APIView):
+    permission_classes = [IsAdminUser]
+    
     def get(self, request, id):
         try:
             flight = Flight.objects.get(pk=id)
