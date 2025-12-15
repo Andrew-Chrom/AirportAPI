@@ -17,8 +17,8 @@ class Order(models.Model):
     
     amount = models.FloatField(null=True)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     
     payment_method = models.CharField(
@@ -46,8 +46,8 @@ class Flight(models.Model):
         DELAYED = "delayed", "DELAYED"
         CANCELLED = "cancelled", "CANCELLED"
     
-    departure_time = models.DateTimeField(db_default=Now())
-    arrival_time = models.DateTimeField(db_default=Now())
+    departure_time = models.DateTimeField(auto_now=True)
+    arrival_time = models.DateTimeField(auto_now=True)
 
     departure_airport = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="departure_airport") 
     arrival_airport   = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="arrival_airport")
@@ -71,11 +71,10 @@ class Flight(models.Model):
             
             for row in range(1, self.plane.max_row + 1):
                 for column in SeatColumns:
-                    print(column)
                     if column.value == self.plane.max_column:
-                        tickets.append(Ticket(flight=self, row=row, column=column.value))
+                        tickets.append(Ticket(price=42.42,flight=self, row=row, column=column.value))
                         break
-                    tickets.append(Ticket(flight=self, row=row, column=column.value))
+                    tickets.append(Ticket(price=42.42, flight=self, row=row, column=column.value))
             Ticket.objects.bulk_create(tickets)
     
     def __str__(self):
@@ -86,6 +85,7 @@ class Ticket(models.Model):
         BOOKED = "booked", "BOOKED"
         CANCELLED = "cancelled", "CANCELLED"
         USED = "used", "USED"
+        RESERVED = "reserved", "RESERVED"
         AVAILABLE = "available", "AVAILABLE"
     class TicketType(models.TextChoices):
         ECONOMY = "economy", "ECONOMY"
@@ -110,11 +110,31 @@ class Ticket(models.Model):
         default=TicketType.FIRST
     )
     
-    order = models.ForeignKey(Order, related_name="tickets", blank=True, null=True, on_delete=models.SET_NULL)
-    flight = models.ForeignKey(Flight, on_delete=models.DO_NOTHING)
+    order = models.ForeignKey(Order, related_name="tickets", blank=True, null=True, on_delete=models.CASCADE)
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE)
     user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True)
     
     def __str__(self):
         return f"{self.flight.departure_airport.name} - {self.flight.departure_airport.name}" 
     
+
+class Payment(models.Model):
+    class PaymentStatus(models.TextChoices):
+        PENDING = "pending", "PENDING"
+        COMPLETED = "completed", "COMPLETED"
+        FAILED = "failed", "FAILED"
+        REFUNDED = "refunded", "REFUNDED"
     
+    amount = models.FloatField()
+    payment_date = models.DateTimeField(auto_now=True)
+    
+    status = models.CharField(
+        max_length=10,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING
+    )
+    
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return f"Payment {self.id} for Order {self.order.id}"   

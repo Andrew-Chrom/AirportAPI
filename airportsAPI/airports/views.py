@@ -4,11 +4,11 @@ from .serializers import DetailedAirplaneSerializer, DetailedAirportSerializer
 from .models import Airline, Airplane, Country, Airport
 
 
-class AirplaneListCreateAV(generics.ListCreateAPIView):
+class AirplaneListCreateApiView(generics.ListCreateAPIView):
     queryset = Airplane.objects.all()
     serializer_class = AirplaneSerializer
     
-class AirplaneRetriveUpdateDestroyAV(generics.RetrieveUpdateDestroyAPIView):
+class AirplaneRetriveUpdateDestroyApiView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Airplane.objects.all()
     serializer_class = DetailedAirplaneSerializer
     lookup_url_kwarg = 'id'
@@ -25,11 +25,11 @@ class CountryViewSet(viewsets.ModelViewSet):
     
     
     
-class AirportListCreateAV(generics.ListCreateAPIView):
+class AirportListCreateApiView(generics.ListCreateAPIView):
     serializer_class = AirportSerializer
     queryset = Airport.objects.all()
 
-class AirportRetriveUpdateDestroyAV(generics.RetrieveUpdateDestroyAPIView):
+class AirportRetriveUpdateDestroyApiView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DetailedAirportSerializer
     queryset = Airport.objects.all()
     lookup_url_kwarg = 'id'
