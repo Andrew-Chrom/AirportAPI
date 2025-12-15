@@ -40,8 +40,7 @@ def stripe_webhook(request):
     
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    endpoint_secret = settings.STRIPE_WEBHOOK_SECRET # there are some troubles with dotenv file
-    
+    endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
     try:
         event = stripe.Webhook.construct_event(
             payload=payload,
@@ -53,7 +52,7 @@ def stripe_webhook(request):
     except stripe.error.SignatureVerificationError:
         return Response({'detail': 'Invalid signature'}, status=400)
 
-    if event['type'] == 'checkout.session.completed':
+    if event['type'] ==  'checkout.session.completed':
         session = event['data']['object']
         order_id = session.get('metadata', {}).get('order_id')
         
@@ -69,7 +68,7 @@ def stripe_webhook(request):
             )
             Ticket.objects.filter(order=order_id).update(ticket_status='booked')
 
-    elif event['type'] == 'checkout.session.expired':
+    elif event['type'] == 'payment_intent.payment_failed':
         session = event['data']['object']
         order_id = session.get('metadata', {}).get('order_id')
         
@@ -86,7 +85,7 @@ def stripe_webhook(request):
                         order=None 
                     )
             except Order.DoesNotExist:
-                pass
+                return Response("Order doesn't exist", status=404)
     
     return Response({'status': 'success'}, status=200)
 
