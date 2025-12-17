@@ -19,7 +19,7 @@ class AirportAdmin(admin.ModelAdmin):
     list_filter = ['country__region']
     
     def list_airlines(self, obj):
-        return ", ".join([airline.airline_alias for airline in obj.airlines.all()])
+        return ", ".join([airline.alias for airline in obj.airlines.all()])
 
     list_airlines.short_description = 'Airlines'
 

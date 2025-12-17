@@ -167,3 +167,9 @@ SPECTACULAR_SETTINGS = {
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://saleable-calceolate-carolyne.ngrok-free.dev",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
