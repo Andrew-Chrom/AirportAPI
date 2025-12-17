@@ -10,7 +10,7 @@ RUN pip install --upgrade pip
 
 COPY requirements.txt /app/
 
-# for psyco..
+# for psycopg2
 RUN apt-get update && \
     apt-get install -y gcc libpq-dev && \
     apt-get clean   
