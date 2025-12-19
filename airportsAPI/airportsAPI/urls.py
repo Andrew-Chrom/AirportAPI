@@ -21,8 +21,9 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-
+from debug_toolbar.toolbar import debug_toolbar_urls
 from flights.views import Success, Cancelled
+from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -40,4 +41,9 @@ urlpatterns = [
 
     path('success', Success),
     path('cancelled', Cancelled),
-]
+] + debug_toolbar_urls()
+
+# if settings.DEBUG:
+#     urlpatterns += [
+#         path("__debug__/", include("debug_toolbar.urls")),
+#     ]
