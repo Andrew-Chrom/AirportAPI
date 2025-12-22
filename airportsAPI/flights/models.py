@@ -36,7 +36,7 @@ class Order(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
 
     def __str__(self):
-        return f"Order {self.id}, {self.user.username}"
+        return f"Order {self.id}"
     
 class Flight(models.Model):
     class FlightStatus(models.TextChoices):
@@ -78,7 +78,7 @@ class Flight(models.Model):
             Ticket.objects.bulk_create(tickets)
     
     def __str__(self):
-        return f"{self.departure_airport.id} - {self.arrival_airport.id} | {self.departure_time} - {self.arrival_time}" # | {self.departure_airport.name} - {self.arrival_airport.name}" # need to change
+        return f'Flight #{self.id}'
 
 class Ticket(models.Model):
     class TicketStatus(models.TextChoices):
@@ -115,7 +115,7 @@ class Ticket(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True)
     
     def __str__(self):
-        return f"{self.flight.departure_airport.name} - {self.flight.departure_airport.name}" 
+        return f"Ticket #{self.id}" 
     
 
 class Payment(models.Model):
@@ -137,4 +137,4 @@ class Payment(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     
     def __str__(self):
-        return f"Payment {self.id} for Order {self.order.id}"   
+        return f"Payment {self.id}"   

@@ -92,9 +92,10 @@ def stripe_webhook(request):
 class OrderListCreate(ListCreateAPIView):
     
     def get_queryset(self):
+        qs = Order.objects.select_related("user")
         if self.request.user.is_staff:
-            return Order.objects.all()
-        return Order.objects.filter(user=self.request.user)
+            return qs
+        return qs.filter(user=self.request.user)
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -156,20 +157,21 @@ class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
     lookup_url_kwarg = 'id'
     
     def get_queryset(self):
+        qs = Order.objects.select_related("user").prefetch_related("tickets")
         if self.request.user.is_staff:
-            return Order.objects.all()
-        return Order.objects.filter(user=self.request.user)
+            return qs
+        return qs.filter(user=self.request.user)
 
 class FlightUserApiView(ListCreateAPIView):
     pagination_class = UserFlightPagination
     serializer_class = FlightSerializer
-    queryset = Flight.objects.all()
+    queryset = Flight.objects.select_related("plane", "departure_airport", "arrival_airport")
 
 class FlightAdminApiView(ListCreateAPIView):
     permission_classes = [IsAdminUser]
     pagination_class = AdminFlightPagination
     serializer_class = FlightSerializer
-    queryset = Flight.objects.all()
+    queryset = Flight.objects.select_related("plane", "departure_airport", "arrival_airport")
     
  
 class FlightUpdateApiView(APIView):
@@ -199,7 +201,15 @@ class FlightUpdateApiView(APIView):
         
     
 class TicketViewSet(viewsets.ModelViewSet):
-    queryset = Ticket.objects.all()
+    queryset = Ticket.objects.select_related('user',                        # Вирішує проблему з users_customuser (30 дублів)
+        'order',                       # Завантажує замовлення (якщо використовується)
+        'flight',                      # Завантажує проміжну таблицю Flight
+        'flight__plane',               # Завантажує літак
+        'flight__departure_airport',   # Вирішує проблему з airports_airport (38 дублів)
+        'flight__arrival_airport',     # Завантажує аеропорт прибуття
+        'flight__departure_airport__country', # (Опціонально) якщо виводите країну аеропорту
+        'flight__arrival_airport__country'     # (Опціонально)
+    )
     serializer_class = TicketSerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend] 
