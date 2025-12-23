@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chatbot</title>
+    </head>
+    <body>
+
+        <div id="messages">
+
+        </div>
+
+        <form id="form">
+            <input name="prompt" type="text"> 
+            <button type="submit">SEND</button>
+        </form>
+
+        <script>
+            let url = `ws://${window.location.host}/api/ws/socket-server/`
+        
+            const chatSocket = new WebSocket(url)
+
+            chatSocket.onmessage = function(e){
+                let data = JSON.parse(e.data)
+                console.log('Data:', data)
+            
+                if(data.type === 'chat') {
+                    let messages = document.getElementById('messages')
+
+                    messages.insertAdjacentHTML('beforeend', `<div>
+                        <p>${data.message}</p>
+                        </div>`)
+                }
+            }
+
+            let form = document.getElementById('form')
+            form.addEventListener('submit', (e) => {
+                e.preventDefault()
+                let msg = e.target.prompt.value
+                chatSocket.send(JSON.stringify({
+                    'message': msg
+                }))
+                form.reset()
+            })
+            
+
+        </script>
+
+    </body>
+</html>
