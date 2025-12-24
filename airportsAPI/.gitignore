@@ -2,6 +2,8 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=django,python,venv
 
 api.http
+log.txt
+staticfiles
 
 ### Django ###
 *.log

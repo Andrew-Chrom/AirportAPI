@@ -62,7 +62,7 @@ class AIService:
         )
         
         self.chat = self.client.chats.create(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash-lite",#"gemini-1.5-flash-latest",
             config=self.config
         )
 

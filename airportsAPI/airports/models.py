@@ -44,6 +44,8 @@ class Airport(models.Model):
     latitude = models.FloatField()
     longitude = models.FloatField()
     
+    city = models.CharField(max_length=100, null=True, blank=True)
+    
     runaway_num = models.PositiveIntegerField()
     plane_num = models.PositiveIntegerField() # num of planes in airport
     

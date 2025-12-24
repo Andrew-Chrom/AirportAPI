@@ -17,8 +17,8 @@ class Order(models.Model):
     
     amount = models.FloatField(null=True)
     
-    created_at = models.DateTimeField(auto_now=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
     
     
     payment_method = models.CharField(
@@ -46,8 +46,8 @@ class Flight(models.Model):
         DELAYED = "delayed", "DELAYED"
         CANCELLED = "cancelled", "CANCELLED"
     
-    departure_time = models.DateTimeField(auto_now=True)
-    arrival_time = models.DateTimeField(auto_now=True)
+    departure_time = models.DateTimeField()
+    arrival_time = models.DateTimeField()
 
     departure_airport = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="departure_airport") 
     arrival_airport   = models.ForeignKey(Airport, on_delete=models.DO_NOTHING, related_name="arrival_airport")
@@ -126,7 +126,7 @@ class Payment(models.Model):
         REFUNDED = "refunded", "REFUNDED"
     
     amount = models.FloatField()
-    payment_date = models.DateTimeField(auto_now=True)
+    payment_date = models.DateTimeField()
     
     status = models.CharField(
         max_length=10,
