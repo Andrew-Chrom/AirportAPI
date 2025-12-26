@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/', include('airports.urls')),
     path('api/users/', include('users.urls')),
     path('api/', include('flights.urls')),
+    path('api/', include('ai_agent.urls')),
     
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
@@ -42,8 +43,3 @@ urlpatterns = [
     path('success', Success),
     path('cancelled', Cancelled),
 ] + debug_toolbar_urls()
-
-# if settings.DEBUG:
-#     urlpatterns += [
-#         path("__debug__/", include("debug_toolbar.urls")),
-#     ]
