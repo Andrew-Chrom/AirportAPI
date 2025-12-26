@@ -16,7 +16,6 @@
 
         <script>
             let url = `ws://${window.location.host}/api/ws/socket-server/`
-        
             const chatSocket = new WebSocket(url)
 
             chatSocket.onmessage = function(e){

@@ -1,58 +1,127 @@
-# import google.generativeai as genai
 from google import genai
 from google.genai import types
 from django.conf import settings
-from flights.models import Flight
+from flights.models import Flight, Order
 from django.db.models.aggregates import Min
+import datetime
+import json
+from django.utils import timezone
 
-with open('./ai_agent/prompt.txt', 'r', encoding='utf-8') as f:
-    prompt = f.read()
-
-
-def search_flight_with_tickets(destination: str, date:str = None):
+def search_flights(destination: str, departure_city: str = None, date_from: str = None, date_to: str = None):
     flights = Flight.objects.filter(
-        arrival_airport__city__icontains=destination, 
+        arrival_airport__city__icontains=destination,
         flight_status='scheduled'
     )
-    
-    if date:
-        flights = flights.filter(departure_time__date=date)
-        
-    if not flights.exists():
-        return f"На жаль, рейсів до {destination} не знайдено."
 
-    response_text = []
+    if departure_city:
+        flights = flights.filter(departure_airport__city__icontains=departure_city)
 
+    if date_from and date_to:
+        flights = flights.filter(departure_time__date__range=[date_from, date_to])
+    elif date_from:
+        flights = flights.filter(departure_time__date=date_from)
+    else:
+        today = timezone.now().date()
+        flights = flights.filter(departure_time__date__gte=today)
+
+    flights = flights.order_by('departure_time')[:5]
+
+    data = []
     for f in flights:
-        available_tickets = f.tickets.filter(ticket_status='available')
-        count = available_tickets.count()
-        
-        if count == 0:
-            response_text.append(f"Рейс до {destination} ({f.departure_time}) - МІСЦЬ НЕМАЄ.")
-            continue
-        
-        min_price = available_tickets.aggregate(Min('price'))['price__min']
-        
-        info = (
-            f"Рейс: {f.departure_airport.city} -> {f.arrival_airport.city}\n"
-            f"Час: {f.departure_time.strftime('%H:%M')}\n"
-            f"Статус: {f.get_flight_status_display()}\n"
-            f"Вільних місць: {count}\n"
-            f"Ціна від: ${min_price}"
-        )
-        response_text.append(info)
+        data.append({
+            "id": f.id,
+            "route": f"{f.departure_airport.city} -> {f.arrival_airport.city}",
+            "departure_time": f.departure_time.strftime('%Y-%m-%d %H:%M'),
+            "arrival_time": f.arrival_time.strftime('%Y-%m-%d %H:%M'),
+            "status": f.flight_status,
+        })
 
-    return "\n---\n".join(response_text)
+    if not data:
+        return "No flights found."
 
+    return json.dumps(data)
+
+
+def get_user_orders(email: str):
+    orders = Order.objects.filter(user__email__iexact=email).order_by('-created_at')[:5]
+    
+    if not orders.exists():
+        return "No orders found."
+    
+    data = []
+    for o in orders:
+        tickets_info = []
+        for t in o.tickets.all():
+            tickets_info.append({
+                "flight": f"{t.flight.departure_airport.city} -> {t.flight.arrival_airport.city}",
+                "date": t.flight.departure_time.strftime('%Y-%m-%d'),
+                "seat": f"{t.row}{t.column}",
+                "type": t.ticket_type
+            })
+
+        data.append({
+            "order_id": o.id,
+            "status": o.status,
+            "total_price": o.amount,
+            "tickets": tickets_info
+        })
+        
+    return json.dumps(data)
+
+
+
+def get_ticket_details(flight_id: int):
+    try:
+        flight = Flight.objects.get(id=flight_id)
+    except Flight.DoesNotExist:
+        return "Flight ID not found."
+
+    available = flight.ticket_set.filter(ticket_status='available')
+    total_free = available.count()
+
+    if total_free == 0:
+        return "No seats available."
+
+    prices = []
+    for t_type in ['economy', 'business']:
+        min_price = available.filter(ticket_type=t_type).aggregate(Min('price'))['price__min']
+        if min_price:
+            prices.append(f"{t_type.capitalize()}: form ${min_price}")
+
+    price_str = ", ".join(prices) if prices else "Check details app"
+    
+    return (
+        f"Flight {flight.id} Details:\n"
+        f"Available Seats: {total_free}\n"
+        f"Prices: {price_str}"
+    )
 
 class AIService:
-    def __init__(self):
-        self.available_tools = {
-            'search_flights': search_flight_with_tickets
-        }
+    def __init__(self, user):
+
+        self.user = user
+
+        with open('./ai_agent/prompt.txt', 'r', encoding='utf-8') as f:
+            prompt = f.read()
+
+        today = datetime.date.today().strftime("%Y-%m-%d")
+        weekday = datetime.date.today().strftime("%A")
+
+        time_context = f"""\nSYSTEM CONTEXT:\n Today is {weekday}, {today}.\n 
+                        When user says 'next week' or 'tomorrow', 
+                        calculate dates based on today.\n"""
+        
+        
+        user_context = f"""\n--- CURRENT USER CONTEXT ---\n"
+                Username: {user.username}\n
+                Email: {user.email}\n
+                ------------------------------\n"""
+        
+        prompt += time_context + user_context
+
         self.client = genai.Client()
         self.config = types.GenerateContentConfig(
-            tools=[search_flight_with_tickets],
+            tools=[search_flights, get_ticket_details, get_user_orders],
             automatic_function_calling=types.AutomaticFunctionCallingConfig(
                 disable=False, 
                 maximum_remote_calls=3
@@ -62,7 +131,7 @@ class AIService:
         )
         
         self.chat = self.client.chats.create(
-            model="gemini-2.5-flash-lite",#"gemini-1.5-flash-latest",
+            model="gemini-2.5-flash",#"gemini-1.5-flash-latest",
             config=self.config
         )
 
@@ -70,7 +139,6 @@ class AIService:
         try:
             
             response = self.chat.send_message(user_message)
-            # response = self.chat.send_message(user_message)
             return response.text
         except Exception as e:
             return f"Error: {e}"

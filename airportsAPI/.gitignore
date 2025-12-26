@@ -4,6 +4,7 @@
 api.http
 log.txt
 staticfiles
+management
 
 ### Django ###
 *.log

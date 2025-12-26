@@ -5,14 +5,15 @@ from .ai_agent import AIService
 class ChatConsumer(WebsocketConsumer):
     
     def connect(self):
+        self.user = self.scope["user"]
+        self.service = AIService(user=self.user)
+        
         self.accept()
         
-        self.service = AIService()
-        
         self.send(text_data=json.dumps({
-                'type': 'connection_established',
-                'message': 'Succesfully connected!'
-        }))    
+            'type': 'connection_established',
+            'message': f'Connected as {self.user.username}'
+        }))
         
     def receive(self, text_data):
         text_data_json = json.loads(text_data)

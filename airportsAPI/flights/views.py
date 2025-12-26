@@ -153,6 +153,7 @@ class OrderListCreate(ListCreateAPIView):
             return Response({"checkout_url": session.url}, status=201) 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
+    permission_classes = [IsAdminUser]
     serializer_class = OrderSerializer
     lookup_url_kwarg = 'id'
     
@@ -162,7 +163,7 @@ class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
             return qs
         return qs.filter(user=self.request.user)
 
-class FlightUserApiView(ListCreateAPIView):
+class FlightUserApiView(ListAPIView):
     pagination_class = UserFlightPagination
     serializer_class = FlightSerializer
     queryset = Flight.objects.select_related("plane", "departure_airport", "arrival_airport")
@@ -199,17 +200,18 @@ class FlightUpdateApiView(APIView):
         else:
             return Response(serializer.errors)
         
-    
+    def delete(self, request, id):
+        try:
+            flight = Flight.objects.get(pk=id)
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        flight.delete()
+        return Response(status=status.HTTP_200_OK)
+
+        
 class TicketViewSet(viewsets.ModelViewSet):
-    queryset = Ticket.objects.select_related('user',                        # Вирішує проблему з users_customuser (30 дублів)
-        'order',                       # Завантажує замовлення (якщо використовується)
-        'flight',                      # Завантажує проміжну таблицю Flight
-        'flight__plane',               # Завантажує літак
-        'flight__departure_airport',   # Вирішує проблему з airports_airport (38 дублів)
-        'flight__arrival_airport',     # Завантажує аеропорт прибуття
-        'flight__departure_airport__country', # (Опціонально) якщо виводите країну аеропорту
-        'flight__arrival_airport__country'     # (Опціонально)
-    )
+    queryset = Ticket.objects.select_related('user', 'order', 'flight')
     serializer_class = TicketSerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend] 
@@ -220,10 +222,10 @@ class AvailableTicketsView(ListAPIView):
     serializer_class = TicketSerializer 
     def get_queryset(self):
         flight_id = self.kwargs['id']
-        return Ticket.objects.filter(flight__id=flight_id, ticket_status='available')
+        return Ticket.objects.select_related('user', 'order', 'flight').filter(flight__id=flight_id, ticket_status='available')
     
 class PaymentViewSet(viewsets.ModelViewSet):
-    queryset = Payment.objects.all()
+    queryset = Payment.objects.select_related('order')
     serializer_class = PaymentSerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend] 
