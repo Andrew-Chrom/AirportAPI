@@ -82,19 +82,19 @@ def get_ticket_details(flight_id: int):
     if total_free == 0:
         return "No seats available."
 
-    prices = []
+    prices = {}  
     for t_type in ['economy', 'business']:
         min_price = available.filter(ticket_type=t_type).aggregate(Min('price'))['price__min']
         if min_price:
-            prices.append(f"{t_type.capitalize()}: form ${min_price}")
+            prices[t_type] = min_price
 
-    price_str = ", ".join(prices) if prices else "Check details app"
+    response_data = {
+        "flight_id": flight.id,
+        "available_seats": total_free,
+        "prices": prices
+    }
     
-    return (
-        f"Flight {flight.id} Details:\n"
-        f"Available Seats: {total_free}\n"
-        f"Prices: {price_str}"
-    )
+    return json.dumps(response_data)
 
 class AIService:
     def __init__(self, user):
