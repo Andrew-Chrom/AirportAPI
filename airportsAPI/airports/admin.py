@@ -14,7 +14,7 @@ class CountryAdmin(admin.ModelAdmin):
     list_filter = ['region']
     
 class AirportAdmin(admin.ModelAdmin):
-    list_display = ['name', 'longitude', 'latitude', 'runaway_num', 'plane_num', 'country', 'list_airlines'] # 'airlines'
+    list_display = ['name', 'longitude', 'latitude', 'runway_num', 'plane_num', 'country', 'list_airlines'] # 'airlines'
     search_fields = ['name', 'country__name', 'airlines__alias']
     list_filter = ['country__region']
     

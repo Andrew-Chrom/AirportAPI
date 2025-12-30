@@ -2,6 +2,10 @@ import json
 from channels.generic.websocket import WebsocketConsumer
 from .ai_agent import AIService
 
+import logging
+
+logger = logging.getLogger()
+
 class ChatConsumer(WebsocketConsumer):
     
     def connect(self):
@@ -19,16 +23,23 @@ class ChatConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
         
         try:
+            user_message = f"""<p> You: {text_data_json['message']}</p>"""
+            self.send(text_data=json.dumps({
+                'type': 'chat',
+                'message': user_message
+            }))
+            
             chat_answer = self.service.get_response(text_data_json['message'])
+
+            logger.info(f"User message: {text_data_json['message']}")
+            logger.info(f'{chat_answer}')
             
-            print(f'{text_data_json['message']}')
-            print(f'{chat_answer}')
             
-            message = f"""<p> You: {text_data_json['message']}</p><p>Chat: {chat_answer}</p>"""
+            chat_message = f"""<p>Chat: {chat_answer}</p>"""
             
             self.send(text_data=json.dumps({
                 'type': 'chat',
-                'message': message
+                'message': chat_message
             }))
         except Exception as e:
-            print(f'{e}')
+            logger.info(f'{e}')

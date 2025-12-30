@@ -18,7 +18,7 @@ class CreateOrderSerializer(serializers.Serializer):
         child=serializers.IntegerField(),
         write_only=True
     )
-    user = serializers.IntegerField() 
+    # user = serializers.IntegerField() 
     
 class FlightSerializer(serializers.ModelSerializer):
     class Meta:

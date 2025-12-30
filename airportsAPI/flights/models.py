@@ -17,8 +17,8 @@ class Order(models.Model):
     
     amount = models.FloatField(null=True)
     
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     
     payment_method = models.CharField(
@@ -33,7 +33,7 @@ class Order(models.Model):
         default=OrderStatus.PENDING
     )
     
-    user = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"Order {self.id}"
@@ -58,7 +58,7 @@ class Flight(models.Model):
         default=FlightStatus.SCHEDULED
     )
     
-    plane = models.ForeignKey(Airplane, on_delete=models.DO_NOTHING)
+    plane = models.ForeignKey(Airplane, on_delete=models.PROTECT)
     
     
     def save(self, **kwargs):

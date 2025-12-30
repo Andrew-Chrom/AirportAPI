@@ -27,7 +27,7 @@ class Country(models.Model):
         EUROPE = "europe", "EU"
         ASIA = "asia", "AS"
         AMERICA = "america", "AM"
-        AFRICA = "africe", "AF"
+        AFRICA = "africa", "AF"
     
     name = models.CharField(max_length=100)
     region = models.CharField(
@@ -46,7 +46,7 @@ class Airport(models.Model):
     
     city = models.CharField(max_length=100, null=True, blank=True)
     
-    runaway_num = models.PositiveIntegerField()
+    runway_num = models.PositiveIntegerField()
     plane_num = models.PositiveIntegerField() # num of planes in airport
     
     country = models.ForeignKey(Country, on_delete=models.DO_NOTHING)

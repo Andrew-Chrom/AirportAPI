@@ -14,9 +14,6 @@ COPY requirements.txt /app/
 RUN apt-get update && \
     apt-get install -y gcc libpq-dev && \
     apt-get clean   
-RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    python -m pip install -r requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -24,4 +21,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "airportsAPI.wsgi"]
+CMD ["gunicorn", "airportsAPI.asgi:application", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
