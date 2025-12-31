@@ -20,7 +20,7 @@ import time
 import stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-HOST = 'https://saleable-calceolate-carolyne.ngrok-free.dev'
+HOST = 'https://airportapi.onrender.com/'
 SUCCESS_URL = f'{HOST}/api/payment/success/'
 CANCEL_URL = f'{HOST}/api/payment/cancelled/'
 
