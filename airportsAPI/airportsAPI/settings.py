@@ -35,7 +35,7 @@ if os.getenv("DEBUG") == "True":
 else:
     DEBUG = False
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(' ') #['localhost', '127.0.0.1', 'saleable-calceolate-carolyne.ngrok-free.dev']
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split()
 
 
 # Application definition
