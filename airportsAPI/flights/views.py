@@ -21,8 +21,8 @@ import stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 HOST = 'https://airportapi.onrender.com/'
-SUCCESS_URL = f'{HOST}/api/payment/success/'
-CANCEL_URL = f'{HOST}/api/payment/cancelled/'
+SUCCESS_URL = f'{HOST}api/payment/success/'
+CANCEL_URL = f'{HOST}api/payment/cancelled/'
 
 @api_view(['GET'])
 def Success(request):
@@ -66,7 +66,7 @@ def stripe_webhook(request):
                 updated_at=now()
             )
             Ticket.objects.filter(order=order_id).update(ticket_status='booked')
-
+            
     elif event['type'] == 'payment_intent.payment_failed':
         session = event['data']['object']
         order_id = session.get('metadata', {}).get('order_id')
