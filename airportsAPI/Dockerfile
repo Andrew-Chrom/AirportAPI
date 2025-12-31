@@ -19,6 +19,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# for problem with settings.py
+ENV DJANGO_SETTINGS_MODULE=airportsAPI.settings
+ENV SECRET_KEY=dummy-secret-key
+ENV ALLOWED_HOSTS=*
+ENV DATABASE_URL=sqlite:///db.sqlite3
+
 RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
