@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, filters
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView, ListAPIView
 from django_filters.rest_framework import DjangoFilterBackend
@@ -8,22 +8,21 @@ from rest_framework.permissions import IsAdminUser
 from django.utils.timezone import now
 from .serializers import FlightSerializer, TicketSerializer, OrderSerializer, CreateOrderSerializer, PaymentSerializer
 from .models import Flight, Ticket, Order, Payment
-from users.models import CustomUser
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
 from rest_framework.permissions import AllowAny
 from .pagination import UserFlightPagination, AdminFlightPagination
-from rest_framework.pagination import PageNumberPagination, CursorPagination
+from .permissions import IsAdminOrReadOnly
 import time
 
 import stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 HOST = 'https://saleable-calceolate-carolyne.ngrok-free.dev'
-SUCCESS_URL = f'{HOST}/success'
-CANCEL_URL = f'{HOST}/cancelled'
+SUCCESS_URL = f'{HOST}/api/payment/success/'
+CANCEL_URL = f'{HOST}/api/payment/cancelled/'
 
 @api_view(['GET'])
 def Success(request):
@@ -90,11 +89,17 @@ def stripe_webhook(request):
     return Response({'status': 'success'}, status=200)
 
 class OrderListCreate(ListCreateAPIView):
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['status', 'payment_method']
+    
+    ordering_fields = ['created_at', 'amount']
+    ordering = ['-created_at']
     
     def get_queryset(self):
+        qs = Order.objects.select_related("user")
         if self.request.user.is_staff:
-            return Order.objects.all()
-        return Order.objects.filter(user=self.request.user)
+            return qs
+        return qs.filter(user=self.request.user)
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -106,7 +111,7 @@ class OrderListCreate(ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        user = CustomUser.objects.get(id=data["user"])
+        user = request.user
         ticket_ids = data["tickets"]
         
         with transaction.atomic():
@@ -152,69 +157,66 @@ class OrderListCreate(ListCreateAPIView):
             return Response({"checkout_url": session.url}, status=201) 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 class OrderRetrieveUpdateDestroy(RetrieveDestroyAPIView):
+    permission_classes = [IsAdminUser]
     serializer_class = OrderSerializer
     lookup_url_kwarg = 'id'
+
+class FlightViewSet(viewsets.ModelViewSet):
+    queryset = Flight.objects.select_related("plane", "departure_airport", "arrival_airport")
+    serializer_class = FlightSerializer
+    permission_classes = [IsAdminOrReadOnly]
     
-    def get_queryset(self):
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['departure_airport__city', 'arrival_airport__city', 'departure_airport__name']
+    filterset_fields = {
+        'flight_status': ['exact'],
+        'departure_time': ['date', 'gte', 'lte'],
+        'departure_airport': ['exact'],
+        'arrival_airport': ['exact'],
+    }
+    ordering_fields = ['departure_time', 'arrival_time']
+    ordering = ['departure_time']
+    
+    @property
+    def pagination_class(self):
         if self.request.user.is_staff:
-            return Order.objects.all()
-        return Order.objects.filter(user=self.request.user)
+            return AdminFlightPagination
+        return UserFlightPagination
 
-class FlightUserApiView(ListCreateAPIView):
-    pagination_class = UserFlightPagination
-    serializer_class = FlightSerializer
-    queryset = Flight.objects.all()
-
-class FlightAdminApiView(ListCreateAPIView):
-    permission_classes = [IsAdminUser]
-    pagination_class = AdminFlightPagination
-    serializer_class = FlightSerializer
-    queryset = Flight.objects.all()
-    
- 
-class FlightUpdateApiView(APIView):
-    permission_classes = [IsAdminUser]
-    
-    def get(self, request, id):
-        try:
-            flight = Flight.objects.get(pk=id)
-        except:
-            return Response("flight doesn't exist with pk={pk}")
-        
-        serializer = FlightSerializer(flight)
-        return Response(serializer.data)
-            
-    def put(self, request, id):
-        try:
-            flight = Flight.objects.get(pk=id)
-        except:
-            return Response("flight doesn't exist with pk={pk}")
-        
-        serializer = FlightSerializer(flight, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
-        
-    
 class TicketViewSet(viewsets.ModelViewSet):
-    queryset = Ticket.objects.all()
+    queryset = Ticket.objects.select_related('user', 'order', 'flight')
     serializer_class = TicketSerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend] 
     filterset_fields = ['flight', 'ticket_status', 'ticket_type']
-   
-   
+    
+    filterset_fields = {
+        'flight': ['exact'],
+        'ticket_status': ['exact'],
+        'ticket_type': ['exact'],
+        'price': ['gte', 'lte'],
+        'row': ['exact'],
+    }
+    
+    ordering_fields = ['price', 'row', 'column']
 class AvailableTicketsView(ListAPIView):
     serializer_class = TicketSerializer 
     def get_queryset(self):
         flight_id = self.kwargs['id']
-        return Ticket.objects.filter(flight__id=flight_id, ticket_status='available')
+        return Ticket.objects.select_related('user', 'order', 'flight').filter(flight__id=flight_id, ticket_status='available')
     
 class PaymentViewSet(viewsets.ModelViewSet):
-    queryset = Payment.objects.all()
+    queryset = Payment.objects.select_related('order')
     serializer_class = PaymentSerializer
     permission_classes = [IsAdminUser]
-    filter_backends = [DjangoFilterBackend] 
-    filterset_fields = ['order', 'status']
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    
+    filterset_fields = {
+        'order': ['exact'],
+        'status': ['exact'],
+        'payment_date': ['date', 'gte', 'lte'], # Фільтр по даті транзакції
+        'amount': ['gte', 'lte'],
+    }
+    
+    ordering_fields = ['payment_date', 'amount']
+    ordering = ['-payment_date']

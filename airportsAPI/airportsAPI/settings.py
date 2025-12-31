@@ -37,15 +37,20 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(' ') #['localhost', '127.0
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
+    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
     'flights',
     'users',
     'airports',
+    'ai_agent',
     
     'drf_spectacular',
     'rest_framework',
@@ -53,6 +58,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     "debug_toolbar",
 ]
+
+ASGI_APPLICATION = 'airportsAPI.asgi.application'
 
 MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -185,3 +192,31 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
