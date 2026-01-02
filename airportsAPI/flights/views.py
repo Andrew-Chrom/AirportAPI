@@ -54,13 +54,11 @@ def stripe_webhook(request):
     if event['type'] ==  'checkout.session.completed':
         session = event['data']['object']
         order_id = session.get('metadata', {}).get('order_id')
-        
         if order_id:
             payment = Payment.objects.create(amount=session['amount_total'] / 100,
                                          status='completed',
                                          order_id=order_id)
             payment.save()
-            
             Order.objects.filter(id=order_id).update(
                 status='completed',
                 updated_at=now()
@@ -70,7 +68,6 @@ def stripe_webhook(request):
     elif event['type'] == 'payment_intent.payment_failed':
         session = event['data']['object']
         order_id = session.get('metadata', {}).get('order_id')
-        
         if order_id:
             try:
                 order = Order.objects.get(id=order_id)
@@ -85,7 +82,6 @@ def stripe_webhook(request):
                     )
             except Order.DoesNotExist:
                 return Response("Order doesn't exist", status=404)
-    
     return Response({'status': 'success'}, status=200)
 
 class OrderListCreate(ListCreateAPIView):

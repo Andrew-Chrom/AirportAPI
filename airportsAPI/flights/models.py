@@ -126,7 +126,7 @@ class Payment(models.Model):
         REFUNDED = "refunded", "REFUNDED"
     
     amount = models.FloatField()
-    payment_date = models.DateTimeField()
+    payment_date = models.DateTimeField(auto_now_add=True)
     
     status = models.CharField(
         max_length=10,
